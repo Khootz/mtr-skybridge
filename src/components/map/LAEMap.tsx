@@ -14,6 +14,15 @@ const laeStations = [
   { name: 'Tseung Kwan O', lat: 22.3153, lng: 114.2649, type: 'station', status: 'active' },
 ];
 
+// Simulated aerial vehicles with routes
+const aerialVehicles = [
+  { id: 'AV-001', type: 'air-taxi', from: [22.3080, 113.9185], to: [22.2855, 114.1577], color: '#9B1B30' },
+  { id: 'AV-002', type: 'drone', from: [22.2988, 114.1722], to: [22.3874, 114.1952], color: '#0B2A45' },
+  { id: 'AV-003', type: 'air-taxi', from: [22.2759, 114.1455], to: [22.3048, 114.1614], color: '#9B1B30' },
+  { id: 'AV-004', type: 'cargo-drone', from: [22.3153, 114.2649], to: [22.2988, 114.1722], color: '#F2B300' },
+  { id: 'AV-005', type: 'air-taxi', from: [22.3048, 114.1614], to: [22.3080, 113.9185], color: '#9B1B30' },
+];
+
 const markerColors: Record<string, string> = {
   hub: '#9B1B30',
   station: '#0B2A45',
@@ -34,22 +43,63 @@ const createColoredIcon = (color: string) => {
     className: 'custom-marker',
     html: `
       <div style="
-        width: 20px;
-        height: 20px;
+        width: 16px;
+        height: 16px;
         background: ${color};
         border: 2px solid white;
         border-radius: 50%;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
       "></div>
     `,
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
   });
+};
+
+// Aircraft icon creator
+const createAircraftIcon = (color: string, rotation: number) => {
+  return L.divIcon({
+    className: 'aircraft-marker',
+    html: `
+      <div style="
+        transform: rotate(${rotation}deg);
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+      ">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="${color}" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L8 8H4L6 12L4 16H8L12 22L16 16H20L18 12L20 8H16L12 2Z" stroke="white" stroke-width="1"/>
+        </svg>
+      </div>
+    `,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  });
+};
+
+// Calculate rotation angle between two points
+const calculateBearing = (from: [number, number], to: [number, number]) => {
+  const lat1 = from[0] * Math.PI / 180;
+  const lat2 = to[0] * Math.PI / 180;
+  const dLng = (to[1] - from[1]) * Math.PI / 180;
+  
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+};
+
+// Interpolate position along route
+const interpolatePosition = (from: [number, number], to: [number, number], progress: number): [number, number] => {
+  return [
+    from[0] + (to[0] - from[0]) * progress,
+    from[1] + (to[1] - from[1]) * progress,
+  ];
 };
 
 export const LAEMap = () => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
+  const vehicleMarkersRef = useRef<L.Marker[]>([]);
+  const animationRef = useRef<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -57,39 +107,46 @@ export const LAEMap = () => {
 
     // Initialize map
     const map = L.map(mapRef.current, {
-      center: [22.3193, 114.1694],
+      center: [22.32, 114.17],
       zoom: 11,
       zoomControl: false,
     });
 
     mapInstanceRef.current = map;
 
-    // Add dark tile layer
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    // Add realistic Hong Kong map tiles
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
 
     // Add zoom control to bottom right
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Add flight corridors
-    L.circle([22.295, 114.17], {
-      radius: 2000,
-      color: '#F2B300',
-      fillColor: '#F2B300',
-      fillOpacity: 0.1,
-      weight: 2,
-      dashArray: '5, 10',
-    }).addTo(map).bindPopup('<b>Central Corridor</b><br/>Active Flight Zone');
+    // Add flight corridors with gradient effect
+    const corridors = [
+      { from: [22.3080, 113.9185], to: [22.2855, 114.1577], name: 'Airport-Central Corridor' },
+      { from: [22.2988, 114.1722], to: [22.3874, 114.1952], name: 'TST-Sha Tin Route' },
+      { from: [22.3048, 114.1614], to: [22.3153, 114.2649], name: 'West Kowloon-TKO Route' },
+    ];
 
-    L.circle([22.35, 114.05], {
-      radius: 3000,
-      color: '#F2B300',
-      fillColor: '#F2B300',
-      fillOpacity: 0.1,
-      weight: 2,
-      dashArray: '5, 10',
-    }).addTo(map).bindPopup('<b>Airport Approach</b><br/>Active Flight Zone');
+    corridors.forEach((corridor) => {
+      L.polyline([corridor.from as [number, number], corridor.to as [number, number]], {
+        color: '#F2B300',
+        weight: 3,
+        opacity: 0.4,
+        dashArray: '10, 10',
+      }).addTo(map);
+    });
+
+    // Add coverage zones
+    L.circle([22.30, 114.17], {
+      radius: 8000,
+      color: '#9B1B30',
+      fillColor: '#9B1B30',
+      fillOpacity: 0.05,
+      weight: 1,
+      dashArray: '5, 5',
+    }).addTo(map).bindPopup('<b>LAE Service Zone</b><br/>Primary coverage area');
 
     // Add station markers
     laeStations.forEach((station) => {
@@ -114,6 +171,56 @@ export const LAEMap = () => {
       `);
     });
 
+    // Create animated vehicle markers
+    aerialVehicles.forEach((vehicle, idx) => {
+      const bearing = calculateBearing(vehicle.from as [number, number], vehicle.to as [number, number]);
+      const marker = L.marker(vehicle.from as [number, number], {
+        icon: createAircraftIcon(vehicle.color, bearing),
+      }).addTo(map);
+
+      marker.bindPopup(`
+        <div style="min-width: 120px;">
+          <div style="font-weight: 600; font-size: 12px;">${vehicle.id}</div>
+          <div style="font-size: 11px; color: #666; text-transform: capitalize;">${vehicle.type.replace('-', ' ')}</div>
+          <div style="font-size: 10px; color: #22c55e; margin-top: 4px;">● In Flight</div>
+        </div>
+      `);
+
+      vehicleMarkersRef.current.push(marker);
+    });
+
+    // Animate vehicles
+    let startTime = Date.now();
+    const animateVehicles = () => {
+      const elapsed = Date.now() - startTime;
+      const cycleDuration = 20000; // 20 seconds per cycle
+      
+      aerialVehicles.forEach((vehicle, idx) => {
+        const offset = (idx * 0.2) % 1; // Stagger vehicles
+        const progress = ((elapsed / cycleDuration + offset) % 1);
+        
+        // Ping-pong movement
+        const actualProgress = progress < 0.5 ? progress * 2 : (1 - progress) * 2;
+        
+        const from = vehicle.from as [number, number];
+        const to = vehicle.to as [number, number];
+        const pos = interpolatePosition(from, to, actualProgress);
+        const bearing = progress < 0.5 
+          ? calculateBearing(from, to)
+          : calculateBearing(to, from);
+        
+        const marker = vehicleMarkersRef.current[idx];
+        if (marker) {
+          marker.setLatLng(pos);
+          marker.setIcon(createAircraftIcon(vehicle.color, bearing));
+        }
+      });
+
+      animationRef.current = requestAnimationFrame(animateVehicles);
+    };
+
+    animateVehicles();
+
     // Force resize after mount
     setTimeout(() => {
       map.invalidateSize();
@@ -121,37 +228,53 @@ export const LAEMap = () => {
     }, 100);
 
     return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
       map.remove();
       mapInstanceRef.current = null;
+      vehicleMarkersRef.current = [];
     };
   }, []);
 
   return (
     <div className="relative w-full h-full rounded-xl overflow-hidden">
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-secondary/20 z-10">
+        <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
           <div className="text-center">
             <MapPin className="h-6 w-6 text-primary mx-auto mb-1 animate-pulse" />
             <p className="text-xs text-muted-foreground">Loading map...</p>
           </div>
         </div>
       )}
-      <div ref={mapRef} className="w-full h-full" style={{ background: '#0B2A45' }} />
+      <div ref={mapRef} className="w-full h-full" style={{ background: '#e8e0d8' }} />
       
       {/* Legend */}
       <div className="absolute bottom-2 left-2 bg-background/95 backdrop-blur-sm rounded-lg p-2 shadow-lg z-[1000]">
-        <p className="text-[10px] font-semibold text-foreground mb-1">LAE Nodes</p>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-          {Object.entries(markerColors).map(([type, color]) => (
-            <div key={type} className="flex items-center gap-1">
-              <div 
-                className="w-2 h-2 rounded-full border border-white"
-                style={{ background: color }}
-              />
-              <span className="text-[9px] text-muted-foreground capitalize">{type}</span>
-            </div>
-          ))}
+        <p className="text-[10px] font-semibold text-foreground mb-1">Live Status</p>
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-[#9B1B30]" />
+            <span className="text-[9px] text-muted-foreground">Air Taxi</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-[#0B2A45]" />
+            <span className="text-[9px] text-muted-foreground">Drone</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-[#F2B300]" />
+            <span className="text-[9px] text-muted-foreground">Cargo</span>
+          </div>
         </div>
+      </div>
+
+      {/* Live indicator */}
+      <div className="absolute top-2 right-2 bg-background/95 backdrop-blur-sm rounded-full px-2 py-1 shadow-lg z-[1000] flex items-center gap-1.5">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
+        </span>
+        <span className="text-[10px] font-medium text-foreground">5 Active</span>
       </div>
     </div>
   );
