@@ -1,6 +1,18 @@
 import { mockServices, LAEService } from '@/data/mockData';
 import { ShieldCheck, Star, MapPin, Clock, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Suspense, lazy } from 'react';
+
+const LAEMap = lazy(() => import('@/components/map/LAEMap').then(m => ({ default: m.LAEMap })));
+
+const MapFallback = () => (
+  <div className="w-full h-full flex items-center justify-center bg-secondary/10">
+    <div className="text-center">
+      <MapPin className="h-8 w-8 text-primary mx-auto mb-2 animate-pulse" />
+      <p className="text-sm text-muted-foreground">Loading map...</p>
+    </div>
+  </div>
+);
 
 const ServiceCard = ({ service }: { service: LAEService }) => {
   const typeColors = {
@@ -88,13 +100,11 @@ export const UserExplore = () => {
         ))}
       </div>
 
-      {/* Map placeholder */}
-      <div className="card-elevated h-32 mb-4 flex items-center justify-center bg-muted/50 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5" />
-        <div className="text-center z-10">
-          <MapPin className="h-8 w-8 text-primary mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Interactive Map</p>
-        </div>
+      {/* Interactive Map */}
+      <div className="card-elevated h-48 mb-4 overflow-hidden">
+        <Suspense fallback={<MapFallback />}>
+          <LAEMap />
+        </Suspense>
       </div>
 
       {/* Services list */}
