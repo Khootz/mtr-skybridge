@@ -1,6 +1,6 @@
 import { useAppMode } from '@/contexts/AppModeContext';
 import { Switch } from '@/components/ui/switch';
-import { Search, Bell, Menu } from 'lucide-react';
+import { Search, Bell, Menu, Sparkles } from 'lucide-react';
 
 export const AppHeader = () => {
   const { mode, toggleMode } = useAppMode();
@@ -15,20 +15,28 @@ export const AppHeader = () => {
               <Menu className="h-5 w-5" />
             </button>
             
-            {/* Mode Toggle */}
-            <div className="flex items-center gap-2 bg-white/10 rounded-full px-3 py-1.5">
-              <span className={`text-xs font-medium transition-opacity ${mode === 'user' ? 'opacity-100' : 'opacity-60'}`}>
-                User
-              </span>
-              <Switch
-                checked={mode === 'enabler'}
-                onCheckedChange={toggleMode}
-                className="data-[state=checked]:bg-accent data-[state=unchecked]:bg-white/30 h-5 w-9"
-              />
-              <span className={`text-xs font-medium transition-opacity ${mode === 'enabler' ? 'opacity-100' : 'opacity-60'}`}>
-                Enabler
-              </span>
-            </div>
+            {/* Mode Toggle - Glowing */}
+            <button 
+              onClick={toggleMode}
+              className="group relative flex items-center gap-2 rounded-full px-3 py-1.5 cursor-pointer transition-all duration-300 hover:scale-105 active:scale-95"
+            >
+              {/* Animated glow background */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 opacity-90 blur-[2px] animate-pulse-glow" />
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 opacity-75" />
+              
+              {/* Inner content */}
+              <div className="relative flex items-center gap-2 bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full px-3 py-1 shadow-lg">
+                <Sparkles className="h-3 w-3 text-amber-900 animate-pulse" />
+                <span className={`text-xs font-bold transition-all ${mode === 'user' ? 'text-amber-900' : 'text-amber-900/60'}`}>
+                  User
+                </span>
+                <div className="w-px h-3 bg-amber-900/30" />
+                <span className={`text-xs font-bold transition-all ${mode === 'enabler' ? 'text-amber-900' : 'text-amber-900/60'}`}>
+                  Enabler
+                </span>
+                <Sparkles className="h-3 w-3 text-amber-900 animate-pulse" style={{ animationDelay: '0.5s' }} />
+              </div>
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
