@@ -4,6 +4,20 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
+/* Leaflet custom marker fix */
+.custom-marker {
+  background: transparent;
+  border: none;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.leaflet-popup-content {
+  margin: 10px 12px;
+}
 /* MTR LAE Portal Design System */
 
 @layer base {
