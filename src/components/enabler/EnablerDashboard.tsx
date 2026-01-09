@@ -1,7 +1,18 @@
 import { mockFlights, mockIncidents, mockAnalytics, mockInfrastructure } from '@/data/mockData';
-import { Plane, AlertTriangle, Clock, TrendingUp, MapPin, Activity, Users, Shield } from 'lucide-react';
+import { Plane, AlertTriangle, Clock, TrendingUp, MapPin, Activity } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Suspense, lazy } from 'react';
 
+const LAEMap = lazy(() => import('@/components/map/LAEMap').then(m => ({ default: m.LAEMap })));
+
+const MapFallback = () => (
+  <div className="w-full h-full flex items-center justify-center bg-secondary/10">
+    <div className="text-center">
+      <MapPin className="h-8 w-8 text-primary mx-auto mb-2 animate-pulse" />
+      <p className="text-sm text-muted-foreground">Loading map...</p>
+    </div>
+  </div>
+);
 const StatTile = ({ 
   icon: Icon, 
   label, 
@@ -106,20 +117,11 @@ export const EnablerDashboard = () => {
         />
       </div>
 
-      {/* Map Panel Placeholder */}
-      <div className="card-elevated h-40 mb-4 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-secondary/10 to-primary/10" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center">
-            <MapPin className="h-10 w-10 text-primary mx-auto mb-2" />
-            <p className="text-sm font-medium">Flight Corridors Map</p>
-            <p className="text-xs text-muted-foreground">Live aircraft positions & routes</p>
-          </div>
-        </div>
-        {/* Simulated flight dots */}
-        <div className="absolute top-8 left-12 w-3 h-3 bg-primary rounded-full animate-pulse-soft" />
-        <div className="absolute top-16 right-20 w-3 h-3 bg-success rounded-full animate-pulse-soft" style={{ animationDelay: '0.5s' }} />
-        <div className="absolute bottom-12 left-1/3 w-3 h-3 bg-warning rounded-full animate-pulse-soft" style={{ animationDelay: '1s' }} />
+      {/* Flight Corridors Map */}
+      <div className="card-elevated h-48 mb-4 overflow-hidden">
+        <Suspense fallback={<MapFallback />}>
+          <LAEMap />
+        </Suspense>
       </div>
 
       {/* Infrastructure Quick View */}
