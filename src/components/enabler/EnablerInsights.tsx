@@ -1,6 +1,18 @@
 import { mockAnalytics } from '@/data/mockData';
 import { TrendingUp, MapPin, Clock, Shield, Plane, Users, Download, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Suspense, lazy } from 'react';
+
+const DemandHeatmap = lazy(() => import('@/components/map/DemandHeatmap').then(m => ({ default: m.DemandHeatmap })));
+
+const MapFallback = () => (
+  <div className="w-full h-full flex items-center justify-center bg-muted/30">
+    <div className="text-center">
+      <MapPin className="h-6 w-6 text-primary mx-auto mb-1 animate-pulse" />
+      <p className="text-xs text-muted-foreground">Loading heatmap...</p>
+    </div>
+  </div>
+);
 
 const MetricCard = ({ 
   label, 
@@ -82,17 +94,19 @@ export const EnablerInsights = () => {
         />
       </div>
 
-      {/* Demand Heatmap Placeholder */}
-      <div className="card-elevated p-4 mb-4">
-        <h3 className="font-semibold mb-3 flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-primary" />
-          Demand Heatmap
-        </h3>
-        <div className="h-32 bg-gradient-to-br from-primary/20 via-accent/10 to-success/20 rounded-lg flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-sm font-medium">Interactive Heatmap</p>
-            <p className="text-xs text-muted-foreground">Showing demand patterns</p>
-          </div>
+      {/* Demand Heatmap */}
+      <div className="card-elevated overflow-hidden mb-4">
+        <div className="p-3 border-b border-border">
+          <h3 className="font-semibold flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-primary" />
+            Demand Heatmap
+          </h3>
+          <p className="text-xs text-muted-foreground">Real-time service request density</p>
+        </div>
+        <div className="h-56">
+          <Suspense fallback={<MapFallback />}>
+            <DemandHeatmap />
+          </Suspense>
         </div>
       </div>
 
